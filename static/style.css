@@ -1,3 +1,4 @@
+/* 全局样式 */
 body {
     font-family: Arial, sans-serif;
     display: flex;
@@ -5,17 +6,22 @@ body {
     align-items: center;
     height: 100vh;
     margin: 0;
-    background-color: #95e3db;
+    background-image: url('/static/background.jpg'); /* 设置背景图片 */
+    background-size: cover;  /* 背景图片铺满整个屏幕 */
+    background-position: center;  /* 背景图片居中 */
+    background-repeat: no-repeat;  /* 防止背景图片重复 */
 }
 
+/* 聊天容器 */
 #chat-container {
     width: 400px;
-    background: white;
+    background: rgba(255, 255, 255, 0.8);  /* 半透明背景，保证背景图片能透过 */
     border: 1px solid #ccc;
     padding: 10px;
     border-radius: 5px;
 }
 
+/* 消息显示区 */
 #messages {
     height: 300px;
     overflow-y: auto;
@@ -24,12 +30,14 @@ body {
     padding: 5px;
 }
 
+/* 输入框 */
 #message-input {
     width: 75%;
     padding: 5px;
     margin-right: 5px;
 }
 
+/* 发送按钮 */
 #send-button {
     padding: 5px 10px;
 }
