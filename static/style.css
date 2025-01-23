@@ -21,9 +21,15 @@ body {
     border-radius: 5px;
 }
 
+/* 标题居中 */
+#chat-container h2 {
+    text-align: center;  /* 确保标题居中 */
+    margin-top: 0;       /* 去掉标题上方的默认空隙 */
+}
+
 /* 消息显示区 */
 #messages {
-    height: 300px;
+    height: 500px;
     overflow-y: auto;
     border: 1px solid #ddd;
     margin-bottom: 10px;
