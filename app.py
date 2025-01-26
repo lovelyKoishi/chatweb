@@ -1,9 +1,12 @@
+from gevent import monkey
+monkey.patch_all()
+
 from flask import Flask, render_template, request, redirect, url_for, session
 from flask_socketio import SocketIO, send, emit, join_room, leave_room
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
-socketio = SocketIO(app)
+socketio = SocketIO(app, async_mode='gevent')
 
 users = []
 
@@ -51,4 +54,8 @@ def handle_disconnect():
     emit('user_list', users, broadcast=True)
 
 if __name__ == '__main__':
-    socketio.run(app, host='::', port=80, debug=True)
+    ssl_context = ('_.hajimitv.top.pem', '_.hajimitv.top.key')
+    socketio.run(app, host='::', port=443, debug=True, 
+                certfile='_.hajimitv.top.pem',
+                keyfile='_.hajimitv.top.key',
+                server_side=True)
