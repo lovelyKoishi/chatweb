@@ -31,16 +31,6 @@
             box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
             z-index: 1000;
         }
-        #online-count {
-            position: fixed;
-            top: 10px;
-            left: 10px;
-            background: rgba(255, 255, 255, 0.8);
-            padding: 5px 10px;
-            border-radius: 5px;
-            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
-            z-index: 1000;
-        }
     </style>
 </head>
 <body>
@@ -51,7 +41,6 @@
 
     <div id="chat-container">
         <div id="current-username"></div>
-        <div id="online-count">在线人数: 0</div>
         <!-- 聊天区域 -->
         <h2>聊天室</h2>
         <div id="messages"></div>
@@ -67,7 +56,6 @@
         const setUsernameButton = document.getElementById('set-username-button');
         const chatContainer = document.getElementById('chat-container');
         const currentUsernameDiv = document.getElementById('current-username');
-        const onlineCountDiv = document.getElementById('online-count');
         const messagesDiv = document.getElementById('messages');
         const messageInput = document.getElementById('message-input');
         const sendButton = document.getElementById('send-button');
@@ -118,10 +106,6 @@
             messageElement.textContent = msg;
             messagesDiv.appendChild(messageElement);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
-        });
-
-        socket.on('user_list', (users) => {
-            onlineCountDiv.textContent = `在线人数: ${users.length}`;
         });
     </script>
 </body>
