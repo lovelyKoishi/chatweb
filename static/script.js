@@ -6,21 +6,6 @@ const sendButton = document.getElementById('send-button');
 const setUsernameButton = document.getElementById('set-username-button');
 const usernameInput = document.getElementById('username-input');
 
-// 存储用户的用户名
-let username = '匿名用户';  // 默认用户名
-
-// 设置用户名
-setUsernameButton.addEventListener('click', () => {
-    const enteredUsername = usernameInput.value.trim();
-    if (enteredUsername) {
-        username = enteredUsername;
-        alert('用户名设置成功！');
-        usernameInput.disabled = true;  // 禁用用户名输入框
-        setUsernameButton.disabled = true;  // 禁用按钮
-    } else {
-        alert('请输入有效的用户名');
-    }
-});
 
 // 发送消息
 function sendMessage() {
