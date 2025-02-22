@@ -10,21 +10,34 @@
         body {
             font-family: Arial, sans-serif;
             display: flex;
+            flex-direction: column; /* 添加此行使标题与登录框垂直排列 */
             justify-content: center;
             align-items: center;
             height: 100vh;
             margin: 0;
-            background-image: url('/static/background2.jpg'); /* 设置背景图片 */
+            background: linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.1)), url('/static/background2.jpg'); /* 电脑端默认背景 */
             background-size: cover;  /* 背景图片铺满整个屏幕 */
             background-position: center;  /* 背景图片居中 */
             background-repeat: no-repeat;  /* 防止背景图片重复 */
         }
+        @media only screen and (max-width: 768px) {
+            body {
+                background: linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.1)), url('/static/background3.jpg'); /* 手机端背景 */
+                background-size: cover;  /* 背景图片铺满整个屏幕 */
+                background-position: center;  /* 背景图片居中 */
+                background-repeat: no-repeat;  /* 防止背景图片重复 */
+            }
+        }
         #login-container {
-            background: rgba(255, 255, 255, 0.8); /* 设置半透明背景 */
-            padding: 20px;
+            background: rgba(255, 255, 255, 0.9); /* 提升透明度 */
+            padding: 30px; /* 增加内边距 */
             border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); /* 加深阴影效果 */
             text-align: center;
+            transition: transform 0.3s ease; /* 增加放大动画 */
+        }
+        #login-container:hover {
+            transform: scale(1.02);
         }
         #login-form {
             display: flex;
@@ -42,6 +55,11 @@
             border-radius: 5px;
             width: 100%;
             max-width: 300px;
+            transition: all 0.3s ease; /* 为输入框和按钮添加过渡动画 */
+        }
+        #login-form input:focus {
+            border-color: #007BFF;
+            box-shadow: 0 0 5px rgba(0, 123, 255, 0.5); /* 聚焦时的高亮效果 */
         }
         #login-form button {
             padding: 10px 20px;
@@ -51,6 +69,7 @@
             color: white;
             font-size: 1em;
             cursor: pointer;
+            transition: all 0.3s ease; /* 为输入框和按钮添加过渡动画 */
         }
         #login-form button:hover {
             background-color: #0056b3;
@@ -80,6 +99,10 @@
     </style>
 </head>
 <body>
+    <!-- 删除原有标题，并新增圆形 logo -->
+    <div id="logo" style="margin-bottom: 20px;">
+        <img src="/static/logo.gif" alt="logo" style="width:100px; height:100px; border-radius:50%;">
+    </div>
     <div id="login-container">
         <form id="login-form" action="/login" method="post">
             <label for="key">密钥</label>
