@@ -9,6 +9,21 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'EGIN EC PRIVATE KEdsgdfshshersghshfsdhgafh'
 socketio = SocketIO(app, async_mode='gevent')
 
+# 修改：强制 HTTPS 访问钩子（排除 /httpwarning 路由，避免重定向循环）
+@app.before_request
+def enforce_https():
+    if request.path.startswith('/httpwarning'):
+        return  # 排除 /httpwarning 路由
+    if not request.is_secure and request.headers.get('X-Forwarded-Proto', 'http') != 'https':
+        return redirect(url_for('http_warning'))
+
+# 修改：HTTP访问警告路由，重定向到 https://hajimitv.top
+@app.route('/httpwarning')
+def http_warning():
+    print("redirect success")
+    return redirect("https://hajimitv.top")
+
+
 users = []
 
 # 维护消息历史记录
@@ -74,8 +89,13 @@ def handle_join(username):
 if __name__ == '__main__':
     delete_message_history_file()  # 删除历史消息文件
     load_message_history()  # 加载历史消息
-    ssl_context = ('_.hajimitv.top.pem', '_.hajimitv.top.key')
-    socketio.run(app, host='::', port=443, debug=True, 
-                certfile='_.hajimitv.top.pem',
-                keyfile='_.hajimitv.top.key',
-                server_side=True)
+    from gevent.pywsgi import WSGIServer
+    from geventwebsocket.handler import WebSocketHandler  # 新增导入
+    import gevent
+
+    ssl_args = {'certfile': '_.hajimitv.top.pem', 'keyfile': '_.hajimitv.top.key', 'server_side': True}
+    http_server = WSGIServer(('', 80), app, handler_class=WebSocketHandler)  # 指定 WebSocketHandler
+    https_server = WSGIServer(('', 443), app, handler_class=WebSocketHandler, **ssl_args)  # 指定 WebSocketHandler
+
+    gevent.spawn(http_server.serve_forever)
+    https_server.serve_forever()
