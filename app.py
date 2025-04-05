@@ -96,11 +96,11 @@ def handle_user_leave(username):
     if username in online_users:
         online_users.discard(username)
         rooms = user_rooms.pop(username, set())
-        for room in rooms:
-            leave_room(room)
-            emit('system_message', {'message': f'{username} 离开了聊天室'}, room=room)
+        for room, sid in rooms:  # 解包房间和 sid
+            leave_room(room, sid=sid, namespace='/')  # 显式传递 namespace
+            emit('system_message', {'message': f'{username} 离开了聊天室'}, room=room, namespace='/')
         user_last_active.pop(username, None)
-        emit('user_list_update', {'users': list(online_users)}, broadcast=True)
+        emit('user_list_update', {'users': list(online_users)}, broadcast=True, namespace='/')
         print(f"User {username} left the chat")
 
 # Socket.IO事件处理
@@ -128,17 +128,17 @@ def handle_join(data):
     if username:
         print(f"User {username} joined room {room}")
         online_users.add(username)
-        user_rooms[username].add(room)
+        user_rooms[username].add((room, request.sid))  # 存储房间和 sid
         user_last_active[username] = time.time()
         join_room(room)
         
         # 发送欢迎消息和历史消息
-        emit('system_message', {'message': f'欢迎 {username} 加入聊天室!'}, room=room)
-        emit('user_list_update', {'users': list(online_users)}, broadcast=True)
+        emit('system_message', {'message': f'欢迎 {username} 加入聊天室!'}, room=room, namespace='/')
+        emit('user_list_update', {'users': list(online_users)}, broadcast=True, namespace='/')
         
         # 发送最近50条历史消息
         for msg in message_history[-50:]:
-            emit('message', msg, room=request.sid)  # 只发送给当前用户
+            emit('message', msg, room=request.sid, namespace='/')  # 只发送给当前用户
 
 @socketio.on('message')
 def handle_message(data):
@@ -193,11 +193,12 @@ if __name__ == '__main__':
     load_message_history()  # 加载历史消息
     # 启动清理不活跃用户的定时任务
     def background_cleanup():
-        while True:
-            socketio.sleep(5)  # 每5秒检查一次
-            cleanup_inactive_users()
+        with app.app_context():  # 推入 Flask 应用上下文
+            while True:
+                socketio.sleep(5)  # 每5秒检查一次
+                cleanup_inactive_users()
     
     socketio.start_background_task(background_cleanup)
     
-    print("Starting server...")
+    print("Starting server...http://127.0.0.1:11451")
     socketio.run(app, host='0.0.0.0', port=11451, debug=True)
