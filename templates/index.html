@@ -1,147 +1,425 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ciallo～(∠・ω< )⌒★</title>
-    <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
-    <link rel="stylesheet" href="/static/style.css">
+    <title>在线聊天室</title>
     <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        #app {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
         #username-container {
             position: fixed;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
             background: white;
-            padding: 20px;
+            padding: 30px;
             border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
             text-align: center;
+            z-index: 1000;
+        }
+        #username-container input {
+            padding: 10px;
+            width: 200px;
+            margin-right: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        #username-container button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        #username-container button:hover {
+            background-color: #45a049;
         }
         #chat-container {
             display: none;
-            position: relative;
         }
-        #current-username {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            background: rgba(255, 255, 255, 0.8);
-            padding: 5px 10px;
-            border-radius: 5px;
-            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
-            z-index: 1000;
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
         }
-        #change-username-button {
-            margin-top: 10px;
-            padding: 5px 10px;
-            border: none;
-            border-radius: 5px;
-            background-color: #007BFF;
-            color: white;
-            cursor: pointer;
+        .current-user {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 8px 15px;
+            border-radius: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
-        #change-username-button:hover {
-            background-color: #0056b3;
+        .chat-area {
+            display: flex;
+            gap: 20px;
+        }
+        #chat-main {
+            flex: 3;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+        #user-list-container {
+            flex: 1;
+            min-width: 250px;
+        }
+        #user-list {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            height: 600px;
+            overflow-y: auto;
+        }
+        #user-list h3 {
+            margin-top: 0;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        #user-list ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        #user-list li {
+            padding: 10px 0;
+            border-bottom: 1px solid #f5f5f5;
+            display: flex;
+            align-items: center;
+        }
+        #user-list li:last-child {
+            border-bottom: none;
+        }
+        .user-status {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #4CAF50;
+            margin-right: 10px;
         }
         #messages {
             height: 500px;
             overflow-y: auto;
-            border: 1px solid #ddd;
-            margin-bottom: 10px;
-            padding: 5px;
-            word-wrap: break-word; /* 自动换行 */
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid #eee;
+            border-radius: 4px;
         }
         .message {
-            max-width: 100%; /* 限制消息的最大宽度 */
-            overflow-wrap: break-word; /* 防止长单词溢出 */
+            margin-bottom: 15px;
+            padding: 10px 15px;
+            border-radius: 18px;
+            max-width: 70%;
+            word-wrap: break-word;
+        }
+        .message.user {
+            background: #e3f2fd;
+            margin-left: auto;
+            border-bottom-right-radius: 4px;
+        }
+        .message.other {
+            background: #f1f1f1;
+            margin-right: auto;
+            border-bottom-left-radius: 4px;
+        }
+        .message.system {
+            background: #fff8e1;
+            margin: 10px auto;
+            text-align: center;
+            font-style: italic;
+            color: #666;
+            border-radius: 4px;
+            width: auto;
+            max-width: 80%;
+        }
+        .message-username {
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 0.9em;
+        }
+        .message-content {
+            line-height: 1.5;
+        }
+        .message-time {
+            font-size: 0.8em;
+            color: #999;
+            text-align: right;
+            margin-top: 5px;
+        }
+        .message-input-area {
+            display: flex;
+            gap: 10px;
+        }
+        #message-input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        #send-button {
+            padding: 12px 25px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        #send-button:hover {
+            background-color: #45a049;
+        }
+        .online-count {
+            font-size: 0.9em;
+            color: #666;
+            margin-left: 10px;
         }
     </style>
 </head>
 <body>
-    <div id="username-container">
-        <input id="username-input" type="text" placeholder="请输入用户名" />
-        <button id="set-username-button">设置用户名</button>
-    </div>
-
-    <div id="chat-container">
-        <div id="current-username">
-            当前用户名: <span id="username-display"></span>
-            <button id="change-username-button">更改用户名</button>
+    <div id="app">
+        <div id="username-container">
+            <h2>欢迎加入聊天室</h2>
+            <input id="username-input" type="text" placeholder="请输入用户名" autocomplete="off">
+            <button id="set-username-button">开始聊天</button>
         </div>
-        <!-- 聊天区域 -->
-        <h2>聊天室</h2>
-        <div id="messages"></div>
-        <input id="message-input" type="text" placeholder="输入消息...">
-        <button id="send-button">发送</button>
+
+        <div id="chat-container">
+            <div class="header">
+                <h2>在线聊天室</h2>
+                <div class="current-user">
+                    当前用户: <span id="username-display"></span>
+                    <button id="change-username-button">更改用户</button>
+                </div>
+            </div>
+            
+            <div class="chat-area">
+                <div id="chat-main">
+                    <div id="messages"></div>
+                    <div class="message-input-area">
+                        <input id="message-input" type="text" placeholder="输入消息..." autocomplete="off">
+                        <button id="send-button">发送</button>
+                    </div>
+                </div>
+                
+                <div id="user-list-container">
+                    <div id="user-list">
+                        <h3>在线用户 <span id="online-count" class="online-count">(0)</span></h3>
+                        <ul id="user-list-items"></ul>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
+    
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <script>
-        const socket = io();
+        const socket = io({
+            reconnection: true,
+            reconnectionAttempts: 5,
+            reconnectionDelay: 1000,
+            reconnectionDelayMax: 5000
+        });
 
+        // DOM元素
         const usernameContainer = document.getElementById('username-container');
         const usernameInput = document.getElementById('username-input');
         const setUsernameButton = document.getElementById('set-username-button');
         const chatContainer = document.getElementById('chat-container');
-        const currentUsernameDiv = document.getElementById('current-username');
         const usernameDisplay = document.getElementById('username-display');
         const changeUsernameButton = document.getElementById('change-username-button');
         const messagesDiv = document.getElementById('messages');
         const messageInput = document.getElementById('message-input');
         const sendButton = document.getElementById('send-button');
+        const userListItems = document.getElementById('user-list-items');
+        const onlineCount = document.getElementById('online-count');
 
         let username = localStorage.getItem('username') || '';
+        let isConnected = false;
 
+        // 初始化
         if (username) {
-            usernameContainer.style.display = 'none';
-            chatContainer.style.display = 'block';
-            usernameDisplay.textContent = username;
-            socket.emit('join', username);
+            initChat(username);
         }
 
-        setUsernameButton.addEventListener('click', () => {
-            const enteredUsername = usernameInput.value.trim();
-            if (enteredUsername) {
-                username = enteredUsername;
-                localStorage.setItem('username', username);
-                usernameContainer.style.display = 'none';
-                chatContainer.style.display = 'block';
-                usernameDisplay.textContent = username;
-                socket.emit('join', username);
-            } else {
-                alert('请输入有效的用户名');
-            }
-        });
-
-        changeUsernameButton.addEventListener('click', () => {
-            usernameContainer.style.display = 'block';
-            chatContainer.style.display = 'none';
-        });
-
-        function sendMessage() {
-            const msg = messageInput.value;
-            if (msg.trim() !== '') {
-                const fullMessage = `${username}: ${msg}`;
-                socket.send(fullMessage);
-                messageInput.value = '';
-            }
-        }
-
+        // 事件监听
+        setUsernameButton.addEventListener('click', setUsername);
+        changeUsernameButton.addEventListener('click', changeUsername);
         sendButton.addEventListener('click', sendMessage);
-
-        messageInput.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter') {
-                event.preventDefault();
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
                 sendMessage();
             }
         });
 
-        socket.on('message', (msg) => {
+        // 设置用户名
+        function setUsername() {
+            const enteredUsername = usernameInput.value.trim();
+            if (enteredUsername) {
+                username = enteredUsername;
+                localStorage.setItem('username', username);
+                initChat(username);
+            } else {
+                alert('请输入有效的用户名');
+            }
+        }
+
+        // 更改用户名
+        function changeUsername() {
+            if (isConnected) {
+                socket.emit('leave', { username });
+            }
+            username = '';
+            localStorage.removeItem('username');
+            usernameContainer.style.display = 'block';
+            chatContainer.style.display = 'none';
+            messagesDiv.innerHTML = '';
+            userListItems.innerHTML = '';
+            onlineCount.textContent = '(0)';
+            usernameInput.value = '';
+            usernameInput.focus();
+        }
+
+        // 初始化聊天
+        function initChat(username) {
+            usernameContainer.style.display = 'none';
+            chatContainer.style.display = 'block';
+            usernameDisplay.textContent = username;
+            
+            socket.connect();
+            socket.emit('join', { username });
+            isConnected = true;
+            
+            // 开始心跳
+            startHeartbeat();
+        }
+
+        // 发送消息
+        function sendMessage() {
+            const msg = messageInput.value.trim();
+            if (msg && username) {
+                const timestamp = Date.now(); // 获取当前时间戳（毫秒）
+                socket.emit('message', {
+                    username: username,
+                    message: msg,
+                    timestamp: timestamp // 添加发送时间
+                });
+                messageInput.value = '';
+            }
+        }
+
+        // 开始心跳检测
+        function startHeartbeat() {
+            setInterval(() => {
+                if (username && isConnected) {
+                    socket.emit('heartbeat', { username });
+                }
+            }, 10000); // 每10秒发送一次心跳
+        }
+
+        // 添加消息到聊天框
+        function addMessage(data, messageType = 'other') {
+            const type = messageType === 'system' ? 'system' : (data.username === username ? 'user' : 'other');
             const messageElement = document.createElement('div');
-            messageElement.textContent = msg;
-            messageElement.classList.add('message');
+            messageElement.className = `message ${type}`;
+            
+            if (type === 'system') {
+                // 系统消息的样式
+                messageElement.innerHTML = `
+                    <div class="message-content">${data.message}</div>
+                `;
+            } else {
+                // 普通消息的样式
+                const timestamp = new Date(data.timestamp);
+                const formattedTime = timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                messageElement.innerHTML = `
+                    <div class="message-username">${data.username}</div>
+                    <div class="message-content">${data.message}</div>
+                    <div class="message-time">${formattedTime}</div>
+                `;
+            }
+            
             messagesDiv.appendChild(messageElement);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        // 格式化时间
+        function formatTime(date) {
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+
+        // 更新用户列表
+        function updateUserList(users) {
+            userListItems.innerHTML = '';
+            users.forEach(user => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <span class="user-status"></span>
+                    <span>${user}</span>
+                `;
+                userListItems.appendChild(li);
+            });
+            onlineCount.textContent = `(${users.length})`;
+        }
+
+        // Socket.IO事件处理
+        socket.on('connect', () => {
+            console.log('Connected to server');
+            if (username && !isConnected) {
+                socket.emit('join', { username });
+                isConnected = true;
+            }
+        });
+
+        socket.on('disconnect', (reason) => {
+            console.log('Disconnected:', reason);
+            isConnected = false;
+            if (reason === 'io server disconnect') {
+                // 服务器主动断开，尝试重新连接
+                socket.connect();
+            }
+        });
+
+        socket.on('message', (data) => {
+            addMessage(data);
+        });
+
+        socket.on('system_message', (data) => {
+            addMessage(data, 'system');
+        });
+
+        socket.on('user_list_update', (data) => {
+            updateUserList(data.users);
+        });
+
+        // 页面关闭/刷新处理
+        window.addEventListener('beforeunload', () => {
+            if (username && isConnected) {
+                // 使用同步请求确保消息发送
+                navigator.sendBeacon('/leave', JSON.stringify({username: username}));
+            }
+        });
+
+        // 页面隐藏处理
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden' && username && isConnected) {
+                socket.emit('leave', {username: username});
+            }
         });
     </script>
 </body>
