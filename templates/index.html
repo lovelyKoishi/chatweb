@@ -332,8 +332,8 @@
         }
 
         // 添加消息到聊天框
-        function addMessage(data, messageType = 'other') {
-            const type = messageType === 'system' ? 'system' : (data.username === username ? 'user' : 'other');
+        function addMessage(data) {
+            const type = data.is_system ? 'system' : (data.username === username ? 'user' : 'other');
             const messageElement = document.createElement('div');
             messageElement.className = `message ${type}`;
             
@@ -397,10 +397,6 @@
 
         socket.on('message', (data) => {
             addMessage(data);
-        });
-
-        socket.on('system_message', (data) => {
-            addMessage(data, 'system');
         });
 
         socket.on('user_list_update', (data) => {

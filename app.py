@@ -3,8 +3,7 @@ from gevent import monkey
 monkey.patch_all()
 
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
-from flask_socketio import SocketIO, emit, join_room, leave_room
-from collections import defaultdict
+from flask_socketio import SocketIO, emit
 import time
 
 app = Flask(__name__)
@@ -17,27 +16,38 @@ socketio = SocketIO(app,
 # 全局变量
 message_history = []  # 消息历史记录
 online_users = set()  # 在线用户集合
-user_rooms = defaultdict(set)  # 用户与房间的映射
 user_last_active = {}  # 用户最后活跃时间
+socket_to_user = {}  # socket ID 到用户名的映射
 
 def load_message_history():
     if os.path.exists('message_history.txt'):
         with open('message_history.txt', 'r', encoding='utf-8') as file:
             for line in file:
                 try:
-                    username, message, timestamp = line.strip().split('|')
-                    message_history.append({
-                        'username': username,
-                        'message': message,
-                        'timestamp': int(timestamp)  # 转换为整数
-                    })
+                    parts = line.strip().split('|')
+                    if len(parts) == 4:  # 系统消息
+                        username, message, timestamp, is_system = parts
+                        message_history.append({
+                            'username': username,
+                            'message': message,
+                            'timestamp': int(timestamp),
+                            'is_system': bool(is_system)
+                        })
+                    else:  # 普通消息
+                        username, message, timestamp = parts
+                        message_history.append({
+                            'username': username,
+                            'message': message,
+                            'timestamp': int(timestamp),
+                            'is_system': False
+                        })
                 except ValueError:
                     # 忽略格式错误的行
                     continue
 
 def save_message_to_file(msg):
     with open('message_history.txt', 'a', encoding='utf-8') as file:
-        file.write(f"{msg['username']}|{msg['message']}|{msg['timestamp']}\n")
+        file.write(f"{msg['username']}|{msg['message']}|{msg['timestamp']}|{int(msg.get('is_system', False))}\n")
 
 def delete_message_history_file():
     if os.path.exists('message_history.txt'):
@@ -53,7 +63,7 @@ def cleanup_inactive_users():
             inactive_users.append(user)
     
     for user in inactive_users:
-        handle_user_leave(user)
+        handle_user_leave(user, is_background=True)
         print(f"Cleaned up inactive user: {user}")
 
 # 路由
@@ -91,16 +101,35 @@ def handle_leave_request():
         return jsonify({'status': 'success'})
     return jsonify({'status': 'user not found'}), 404
 
-def handle_user_leave(username):
+def handle_user_leave(username, is_background=False):
     """处理用户离开的逻辑"""
     if username in online_users:
         online_users.discard(username)
-        rooms = user_rooms.pop(username, set())
-        for room, sid in rooms:  # 解包房间和 sid
-            leave_room(room, sid=sid, namespace='/')  # 显式传递 namespace
-            emit('system_message', {'message': f'{username} 离开了聊天室'}, room=room, namespace='/')
         user_last_active.pop(username, None)
-        emit('user_list_update', {'users': list(online_users)}, broadcast=True, namespace='/')
+        # 清理socket_to_user中该用户的所有socket映射
+        sockets_to_remove = [sid for sid, user in socket_to_user.items() if user == username]
+        for sid in sockets_to_remove:
+            socket_to_user.pop(sid, None)
+        
+        # 保存离开消息
+        leave_msg = {
+            'username': '系统',
+            'message': f'{username} 离开了聊天室',
+            'timestamp': int(time.time()),
+            'is_system': True
+        }
+        message_history.append(leave_msg)
+        save_message_to_file(leave_msg)
+        
+        if is_background:
+            # 后台任务中使用socketio.emit
+            socketio.emit('message', leave_msg, broadcast=True)
+            socketio.emit('user_list_update', {'users': list(online_users)}, broadcast=True)
+        else:
+            # 正常请求中使用emit
+            emit('message', leave_msg, broadcast=True)
+            emit('user_list_update', {'users': list(online_users)}, broadcast=True)
+        
         print(f"User {username} left the chat")
 
 # Socket.IO事件处理
@@ -110,35 +139,45 @@ def handle_connect():
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    # 找出断开连接的用户
-    username = None
-    for user in list(online_users):
-        if request.sid in user_rooms[user]:
-            username = user
-            break
-    
+    # 通过socket ID找出断开连接的用户
+    username = socket_to_user.pop(request.sid, None)
     if username:
-        handle_user_leave(username)  # 立即处理用户离开
+        # 检查用户是否还有其它活跃连接
+        has_other_connections = any(sid != request.sid and user == username 
+                                  for sid, user in socket_to_user.items())
+        if not has_other_connections:
+            handle_user_leave(username)  # 只有没有其它连接时才处理离开
 
 @socketio.on('join')
 def handle_join(data):
     username = data.get('username')
-    room = data.get('room', 'main')
     
     if username:
-        print(f"User {username} joined room {room}")
-        online_users.add(username)
-        user_rooms[username].add((room, request.sid))  # 存储房间和 sid
-        user_last_active[username] = time.time()
-        join_room(room)
+        print(f"User {username} joined chat")
+        is_reconnect = username in online_users  # 检查是否是重新连接
         
-        # 发送欢迎消息和历史消息
-        emit('system_message', {'message': f'欢迎 {username} 加入聊天室!'}, room=room, namespace='/')
-        emit('user_list_update', {'users': list(online_users)}, broadcast=True, namespace='/')
+        online_users.add(username)
+        user_last_active[username] = time.time()
+        socket_to_user[request.sid] = username  # 记录socket映射
+        
+        # 只有首次连接时才广播欢迎消息并保存到历史
+        if not is_reconnect:
+            welcome_msg = {
+                'username': '系统',
+                'message': f'{username} 加入了聊天室',
+                'timestamp': int(time.time()),
+                'is_system': True
+            }
+            message_history.append(welcome_msg)
+            save_message_to_file(welcome_msg)
+            emit('message', welcome_msg, broadcast=True)
+        
+        # 总是更新用户列表
+        emit('user_list_update', {'users': list(online_users)}, broadcast=True)
         
         # 发送最近50条历史消息
         for msg in message_history[-50:]:
-            emit('message', msg, room=request.sid, namespace='/')  # 只发送给当前用户
+            emit('message', msg)
 
 @socketio.on('message')
 def handle_message(data):
@@ -152,11 +191,12 @@ def handle_message(data):
         formatted_msg = {
             'username': username,
             'message': msg,
-            'timestamp': timestamp  # 使用前端传递的时间
+            'timestamp': timestamp,  # 使用前端传递的时间
+            'is_system': False
         }
         message_history.append(formatted_msg)
         save_message_to_file(formatted_msg)  # 保存到文件
-        emit('message', formatted_msg, broadcast=True)
+        emit('message', formatted_msg, broadcast=True)  # 全局广播消息
 
 @socketio.on('heartbeat')
 def handle_heartbeat(data):
@@ -172,9 +212,6 @@ def handle_change_username(data):
     if old_username and new_username and old_username in online_users:
         # 从在线用户列表中移除旧用户名
         online_users.discard(old_username)
-        
-        # 更新用户房间映射
-        user_rooms[new_username] = user_rooms.pop(old_username, set())
         
         # 更新用户最后活跃时间
         user_last_active[new_username] = user_last_active.pop(old_username, time.time())
